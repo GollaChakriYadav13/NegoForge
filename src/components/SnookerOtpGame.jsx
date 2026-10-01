@@ -2,10 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 
 // Ball colors mapping for numbers 0-9
 const BALL_COLORS = {
-  0: { bg: '#e2e8f0', text: '#0f172a', name: 'White 0' },
+  0: { bg: '#f8fafc', text: '#0f172a', name: 'White 0' },
   1: { bg: '#f59e0b', text: '#ffffff', name: 'Yellow 1' },
   2: { bg: '#10b981', text: '#ffffff', name: 'Green 2' },
-  3: { bg: '#b45309', text: '#ffffff', name: 'Brown 3' },
+  3: { bg: '#d97706', text: '#ffffff', name: 'Brown 3' },
   4: { bg: '#3b82f6', text: '#ffffff', name: 'Blue 4' },
   5: { bg: '#ec4899', text: '#ffffff', name: 'Pink 5' },
   6: { bg: '#ef4444', text: '#ffffff', name: 'Red 6' },
@@ -16,44 +16,42 @@ const BALL_COLORS = {
 
 export const SnookerOtpGame = ({ targetOtp, currentOtp, onOtpChange, onComplete, onCancel }) => {
   const canvasRef = useRef(null);
-  const [aiming, setAiming] = useState(false);
-  const [dragPos, setDragPos] = useState(null);
-  const [isShooting, setIsShooting] = useState(false);
+  const [hoveredBall, setHoveredBall] = useState(null);
   const [pottedMessage, setPottedMessage] = useState(null);
   const [useKeypad, setUseKeypad] = useState(false);
 
   // Canvas size constants
-  const WIDTH = 680;
-  const HEIGHT = 360;
-  const BALL_RADIUS = 13;
-  const POCKET_RADIUS = 24;
-  const FRICTION = 0.982;
+  const WIDTH = 700;
+  const HEIGHT = 380;
+  const BALL_RADIUS = 18; // Increased for better visibility & interaction
+  const POCKET_RADIUS = 32; // Increased for effortless pocketing
+  const FRICTION = 0.985;
 
   // Pocket positions
   const pockets = [
     { x: 30, y: 30 },
-    { x: WIDTH / 2, y: 22 },
+    { x: WIDTH / 2, y: 20 },
     { x: WIDTH - 30, y: 30 },
     { x: 30, y: HEIGHT - 30 },
-    { x: WIDTH / 2, y: HEIGHT - 22 },
+    { x: WIDTH / 2, y: HEIGHT - 20 },
     { x: WIDTH - 30, y: HEIGHT - 30 },
   ];
 
-  // Game state stored in ref for fast animation loop access
+  // Game state stored in ref for animation loop
   const gameStateRef = useRef({
     cueBall: { x: 180, y: HEIGHT / 2, vx: 0, vy: 0, radius: BALL_RADIUS, color: '#ffffff' },
     balls: [],
     particles: [],
     isMoving: false,
+    hoverPos: null,
   });
 
   // Initialize balls on table
   const initBalls = () => {
     const newBalls = [];
-    // Rack position (triangle/diamond formation on right side)
     const startX = 460;
     const startY = HEIGHT / 2;
-    const spacing = BALL_RADIUS * 2 + 2;
+    const spacing = BALL_RADIUS * 2 + 4;
 
     const layout = [
       [0],
@@ -137,7 +135,7 @@ export const SnookerOtpGame = ({ targetOtp, currentOtp, onOtpChange, onComplete,
 
         if (ball.vx !== 0 || ball.vy !== 0) moving = true;
 
-        // Cushion Bounces (Margins offset by rails)
+        // Cushion Bounces
         const marginX = 26;
         const marginY = 26;
 
@@ -169,24 +167,21 @@ export const SnookerOtpGame = ({ targetOtp, currentOtp, onOtpChange, onComplete,
 
           if (dist < POCKET_RADIUS) {
             if (ball === cue) {
-              // Scratch! Reset Cue Ball
               ball.x = 180;
               ball.y = HEIGHT / 2;
               ball.vx = 0;
               ball.vy = 0;
-              setPottedMessage('⚠️ Scratch! Cue ball potted.');
-              setTimeout(() => setPottedMessage(null), 2000);
             } else {
               ball.potted = true;
               ball.vx = 0;
               ball.vy = 0;
-              // Add particle splash
-              for (let i = 0; i < 12; i++) {
+              // Particles
+              for (let i = 0; i < 14; i++) {
                 state.particles.push({
                   x: p.x,
                   y: p.y,
-                  vx: (Math.random() - 0.5) * 4,
-                  vy: (Math.random() - 0.5) * 4,
+                  vx: (Math.random() - 0.5) * 5,
+                  vy: (Math.random() - 0.5) * 5,
                   color: ball.color,
                   life: 1.0,
                 });
@@ -197,7 +192,7 @@ export const SnookerOtpGame = ({ targetOtp, currentOtp, onOtpChange, onComplete,
         });
       });
 
-      // Ball-to-Ball Collisions
+      // Ball Collisions
       for (let i = 0; i < allBalls.length; i++) {
         for (let j = i + 1; j < allBalls.length; j++) {
           const b1 = allBalls[i];
@@ -210,7 +205,6 @@ export const SnookerOtpGame = ({ targetOtp, currentOtp, onOtpChange, onComplete,
           const minDist = b1.radius + b2.radius;
 
           if (dist < minDist && dist > 0) {
-            // Overlap resolution
             const overlap = 0.5 * (minDist - dist);
             const nx = dx / dist;
             const ny = dy / dist;
@@ -220,10 +214,9 @@ export const SnookerOtpGame = ({ targetOtp, currentOtp, onOtpChange, onComplete,
             b2.x += nx * overlap;
             b2.y += ny * overlap;
 
-            // Elastic velocity transfer
             const kx = b1.vx - b2.vx;
             const ky = b1.vy - b2.vy;
-            const p = 2 * (nx * kx + ny * ky) / 2; // Equal mass
+            const p = 2 * (nx * kx + ny * ky) / 2;
 
             b1.vx -= p * nx;
             b1.vy -= p * ny;
@@ -233,7 +226,7 @@ export const SnookerOtpGame = ({ targetOtp, currentOtp, onOtpChange, onComplete,
         }
       }
 
-      // Update Particles
+      // Particles
       state.particles.forEach((p) => {
         p.x += p.vx;
         p.y += p.vy;
@@ -242,32 +235,31 @@ export const SnookerOtpGame = ({ targetOtp, currentOtp, onOtpChange, onComplete,
       state.particles = state.particles.filter((p) => p.life > 0);
 
       state.isMoving = moving;
-      setIsShooting(moving);
     };
 
     const renderCanvas = () => {
       ctx.clearRect(0, 0, WIDTH, HEIGHT);
       const state = gameStateRef.current;
 
-      // 1. Table Outer Wood Rail
+      // Table Rail
       ctx.fillStyle = '#26140a';
       ctx.beginPath();
       ctx.roundRect(0, 0, WIDTH, HEIGHT, 16);
       ctx.fill();
 
-      // 2. Table Felt (Green)
-      ctx.fillStyle = '#0a4220';
+      // Table Felt (Rich Green)
+      ctx.fillStyle = '#0b5229';
       ctx.beginPath();
       ctx.roundRect(14, 14, WIDTH - 28, HEIGHT - 28, 12);
       ctx.fill();
 
-      // Inner Cushion Border Line
-      ctx.strokeStyle = '#052913';
+      // Cushion Inner Line
+      ctx.strokeStyle = '#043016';
       ctx.lineWidth = 4;
       ctx.strokeRect(26, 26, WIDTH - 52, HEIGHT - 52);
 
       // Baulk Line & D-zone
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(180, 26);
@@ -275,64 +267,73 @@ export const SnookerOtpGame = ({ targetOtp, currentOtp, onOtpChange, onComplete,
       ctx.stroke();
 
       ctx.beginPath();
-      ctx.arc(180, HEIGHT / 2, 50, Math.PI / 2, (3 * Math.PI) / 2);
+      ctx.arc(180, HEIGHT / 2, 55, Math.PI / 2, (3 * Math.PI) / 2);
       ctx.stroke();
 
-      // 3. Pockets
+      // Pockets
       pockets.forEach((p) => {
-        ctx.fillStyle = '#090d16';
+        ctx.fillStyle = '#05070d';
         ctx.beginPath();
         ctx.arc(p.x, p.y, POCKET_RADIUS, 0, Math.PI * 2);
         ctx.fill();
 
         ctx.strokeStyle = '#334155';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 2.5;
         ctx.stroke();
       });
 
-      // 4. Numbered Balls
+      // Numbered Balls
       state.balls.forEach((ball) => {
         if (ball.potted) return;
 
-        // Ball Shadow
-        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        // Shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
         ctx.beginPath();
         ctx.arc(ball.x + 3, ball.y + 3, ball.radius, 0, Math.PI * 2);
         ctx.fill();
 
-        // Ball Body
+        // Body
         ctx.fillStyle = ball.color;
         ctx.beginPath();
         ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
         ctx.fill();
 
-        // Ball Highlight / Gloss
+        // Highlight ring if hovered
+        if (hoveredBall && hoveredBall.number === ball.number) {
+          ctx.strokeStyle = '#38bdf8';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(ball.x, ball.y, ball.radius + 3, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        // Gloss
         const grad = ctx.createRadialGradient(
-          ball.x - 3,
-          ball.y - 3,
+          ball.x - 4,
+          ball.y - 4,
           1,
           ball.x,
           ball.y,
           ball.radius
         );
-        grad.addColorStop(0, 'rgba(255,255,255,0.6)');
+        grad.addColorStop(0, 'rgba(255,255,255,0.7)');
         grad.addColorStop(0.5, 'rgba(255,255,255,0)');
         ctx.fillStyle = grad;
         ctx.beginPath();
         ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
         ctx.fill();
 
-        // Ball Number Text
+        // LARGE BOLD NUMBER TEXT
         ctx.fillStyle = ball.textColor;
-        ctx.font = 'bold 11px Inter, sans-serif';
+        ctx.font = '900 16px Inter, system-ui, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(ball.number.toString(), ball.x, ball.y + 0.5);
       });
 
-      // 5. Cue Ball
+      // Cue Ball
       const cue = state.cueBall;
-      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
       ctx.beginPath();
       ctx.arc(cue.x + 3, cue.y + 3, cue.radius, 0, Math.PI * 2);
       ctx.fill();
@@ -343,72 +344,38 @@ export const SnookerOtpGame = ({ targetOtp, currentOtp, onOtpChange, onComplete,
       ctx.fill();
 
       const cueGrad = ctx.createRadialGradient(
-        cue.x - 3,
-        cue.y - 3,
+        cue.x - 4,
+        cue.y - 4,
         1,
         cue.x,
         cue.y,
         cue.radius
       );
-      cueGrad.addColorStop(0, 'rgba(255,255,255,0.8)');
+      cueGrad.addColorStop(0, 'rgba(255,255,255,0.9)');
       cueGrad.addColorStop(0.6, 'rgba(255,255,255,0)');
       ctx.fillStyle = cueGrad;
       ctx.beginPath();
       ctx.arc(cue.x, cue.y, cue.radius, 0, Math.PI * 2);
       ctx.fill();
 
-      // 6. Aiming Trajectory & Cue Stick (When Dragging)
-      if (aiming && dragPos && !state.isMoving) {
-        const dx = cue.x - dragPos.x;
-        const dy = cue.y - dragPos.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-
-        if (dist > 5) {
-          const angle = Math.atan2(dy, dx);
-
-          // Aim Trajectory Dotted Line extending forward
-          ctx.strokeStyle = 'rgba(56, 189, 248, 0.7)';
-          ctx.lineWidth = 2;
-          ctx.setLineDash([5, 5]);
-          ctx.beginPath();
-          ctx.moveTo(cue.x, cue.y);
-          ctx.lineTo(cue.x + Math.cos(angle) * 350, cue.y + Math.sin(angle) * 350);
-          ctx.stroke();
-          ctx.setLineDash([]);
-
-          // Cue Stick graphics drawn behind cue ball
-          const pullBack = Math.min(dist, 100);
-          const stickStartX = cue.x - Math.cos(angle) * (pullBack + 15);
-          const stickStartY = cue.y - Math.sin(angle) * (pullBack + 15);
-          const stickEndX = cue.x - Math.cos(angle) * (pullBack + 220);
-          const stickEndY = cue.y - Math.sin(angle) * (pullBack + 220);
-
-          ctx.strokeStyle = '#d97706';
-          ctx.lineWidth = 5;
-          ctx.beginPath();
-          ctx.moveTo(stickStartX, stickStartY);
-          ctx.lineTo(stickEndX, stickEndY);
-          ctx.stroke();
-
-          // Cue Tip (White)
-          ctx.strokeStyle = '#f8fafc';
-          ctx.lineWidth = 5;
-          ctx.beginPath();
-          ctx.moveTo(stickStartX, stickStartY);
-          ctx.lineTo(
-            cue.x - Math.cos(angle) * (pullBack + 23),
-            cue.y - Math.sin(angle) * (pullBack + 23)
-          );
-          ctx.stroke();
-        }
+      // Aim Line to Hovered Ball or Target
+      if (hoveredBall && !state.isMoving) {
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 3;
+        ctx.setLineDash([6, 6]);
+        ctx.beginPath();
+        ctx.moveTo(cue.x, cue.y);
+        ctx.lineTo(hoveredBall.x, hoveredBall.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
       }
 
-      // 7. Particles
+      // Particles
       state.particles.forEach((p) => {
         ctx.fillStyle = p.color;
         ctx.globalAlpha = p.life;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
         ctx.fill();
         ctx.globalAlpha = 1.0;
       });
@@ -421,73 +388,73 @@ export const SnookerOtpGame = ({ targetOtp, currentOtp, onOtpChange, onComplete,
     };
 
     loop();
-
     return () => cancelAnimationFrame(animationFrameId);
-  }, [aiming, dragPos, currentOtp]);
+  }, [hoveredBall, currentOtp]);
 
-  // Pointer Events for Cue Aiming & Shooting
-  const handlePointerDown = (e) => {
-    if (gameStateRef.current.isMoving) return;
+  // Effortless Click/Tap Interaction: Direct Ball Click Pots the Ball!
+  const handleCanvasClick = (e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left) * (WIDTH / rect.width);
-    const y = (e.clientY - rect.top) * (HEIGHT / rect.height);
+    const clickX = (e.clientX - rect.left) * (WIDTH / rect.width);
+    const clickY = (e.clientY - rect.top) * (HEIGHT / rect.height);
 
-    setAiming(true);
-    setDragPos({ x, y });
-  };
+    // Check if clicked directly on or near a numbered ball
+    const clickedBall = gameStateRef.current.balls.find((b) => {
+      if (b.potted) return false;
+      const dx = b.x - clickX;
+      const dy = b.y - clickY;
+      return Math.sqrt(dx * dx + dy * dy) <= BALL_RADIUS * 1.8;
+    });
 
-  const handlePointerMove = (e) => {
-    if (!aiming) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left) * (WIDTH / rect.width);
-    const y = (e.clientY - rect.top) * (HEIGHT / rect.height);
-
-    setDragPos({ x, y });
-  };
-
-  const handlePointerUp = (e) => {
-    if (!aiming || !dragPos) return;
-
-    const cue = gameStateRef.current.cueBall;
-    const dx = cue.x - dragPos.x;
-    const dy = cue.y - dragPos.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-
-    if (dist > 8) {
+    if (clickedBall) {
+      // Launch cue ball directly at clicked ball with high power to pot it!
+      const cue = gameStateRef.current.cueBall;
+      const dx = clickedBall.x - cue.x;
+      const dy = clickedBall.y - cue.y;
       const angle = Math.atan2(dy, dx);
-      const power = Math.min(dist * 0.22, 22);
 
-      cue.vx = Math.cos(angle) * power;
-      cue.vy = Math.sin(angle) * power;
+      cue.vx = Math.cos(angle) * 22;
+      cue.vy = Math.sin(angle) * 22;
+    } else {
+      // Shoot cue ball towards click position
+      const cue = gameStateRef.current.cueBall;
+      const dx = clickX - cue.x;
+      const dy = clickY - cue.y;
+      const angle = Math.atan2(dy, dx);
+
+      cue.vx = Math.cos(angle) * 18;
+      cue.vy = Math.sin(angle) * 18;
     }
-
-    setAiming(false);
-    setDragPos(null);
   };
 
-  // Helper: Pot Next Digit Automatically (for rapid testing / assistance)
+  const handleCanvasMouseMove = (e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const moveX = (e.clientX - rect.left) * (WIDTH / rect.width);
+    const moveY = (e.clientY - rect.top) * (HEIGHT / rect.height);
+
+    const hovered = gameStateRef.current.balls.find((b) => {
+      if (b.potted) return false;
+      const dx = b.x - moveX;
+      const dy = b.y - moveY;
+      return Math.sqrt(dx * dx + dy * dy) <= BALL_RADIUS * 1.8;
+    });
+
+    setHoveredBall(hovered || null);
+  };
+
+  // Helper: Pot Next Digit Automatically
   const handleAutoPotNext = () => {
     if (currentOtp.length >= 6) return;
     const nextDigit = parseInt(targetOtp[currentOtp.length], 10);
-
-    // Find ball and pot it directly
-    const targetBall = gameStateRef.current.balls.find((b) => b.number === nextDigit && !b.potted);
-    if (targetBall) {
-      targetBall.potted = true;
-      handleBallPotted(nextDigit);
-    } else {
-      // Re-pot digit even if ball was already potted
-      handleBallPotted(nextDigit);
-    }
+    handleBallPotted(nextDigit);
   };
 
-  // Helper: Keypad Number Click
+  // Keypad Handlers
   const handleKeypadClick = (numStr) => {
     if (currentOtp.length < 6) {
       const nextOtp = currentOtp + numStr;
@@ -518,13 +485,13 @@ export const SnookerOtpGame = ({ targetOtp, currentOtp, onOtpChange, onComplete,
             className={`hud-tab-btn ${!useKeypad ? 'active' : ''}`}
             onClick={() => setUseKeypad(false)}
           >
-            🎱 Snooker Table
+            🎱 Tap-To-Pot Game
           </button>
           <button
             className={`hud-tab-btn ${useKeypad ? 'active' : ''}`}
             onClick={() => setUseKeypad(true)}
           >
-            🔢 Keypad Input
+            🔢 Keypad
           </button>
         </div>
       </div>
@@ -555,14 +522,15 @@ export const SnookerOtpGame = ({ targetOtp, currentOtp, onOtpChange, onComplete,
             ref={canvasRef}
             width={WIDTH}
             height={HEIGHT}
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
+            onClick={handleCanvasClick}
+            onMouseMove={handleCanvasMouseMove}
             className="snooker-canvas"
           />
 
           <div className="canvas-instruction-bar">
-            <span>🖱️ <strong>Pull back cue stick</strong> from the White Cue Ball to aim & pot the target numbers!</span>
+            <span className="instruction-text">
+              👉 <strong>Tap any numbered ball directly</strong> to shoot & pot it into the OTP slot!
+            </span>
             <div className="canvas-actions">
               <button type="button" className="btn-auto-pot" onClick={handleAutoPotNext}>
                 ⚡ Auto-Pot Next ({targetOtp[currentOtp.length] || 'Done'})
