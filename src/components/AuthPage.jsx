@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { SnookerOtpGame } from './SnookerOtpGame';
+import { OtpBubblePopGame } from './OtpBubblePopGame';
 
 const COUNTRY_CODES = [
   { code: '+91', country: 'India', flag: '🇮🇳' },
@@ -50,13 +50,22 @@ export const AuthPage = ({ onAuthenticate }) => {
     setStep('otp');
   };
 
-  // Submit Phone Number Form
+  // Phone input handler enforcing max 10 digits
+  const handlePhoneInputChange = (e) => {
+    const cleaned = e.target.value.replace(/\D/g, '').slice(0, 10);
+    setPhoneNumber(cleaned);
+    if (errorMsg) setErrorMsg('');
+  };
+
+  // Submit Phone Number Form with STRICT 10-Digit Validation
   const handlePhoneSubmit = (e) => {
     e.preventDefault();
-    if (!phoneNumber || phoneNumber.trim().length < 7) {
-      setErrorMsg('Please enter a valid phone number (at least 7 digits).');
+
+    if (phoneNumber.length !== 10) {
+      setErrorMsg(`Phone number must be exactly 10 digits (e.g. 9876543210). You entered ${phoneNumber.length} digit(s).`);
       return;
     }
+
     if (authMode === 'signup' && !fullName.trim()) {
       setErrorMsg('Please enter your full name.');
       return;
@@ -91,19 +100,19 @@ export const AuthPage = ({ onAuthenticate }) => {
 
   return (
     <div className="auth-page-container">
-      <div className="auth-card">
+      <div className="auth-card-xl">
         {/* Auth Brand Header */}
-        <div className="auth-brand">
-          <div className="auth-logo-badge">⚡ NegoForge Auth</div>
-          <h2>{authMode === 'signup' ? 'Create Your Account' : 'Welcome Back'}</h2>
-          <p>Multi-Agent Negotiation Platform • Secure Phone Authentication</p>
+        <div className="auth-brand-xl">
+          <div className="auth-badge-xl">⚡ NegoForge Auth</div>
+          <h1>{authMode === 'signup' ? 'Create Your Account' : 'Welcome Back'}</h1>
+          <p className="auth-subtitle-xl">Multi-Agent Platform • Phone OTP Verification</p>
         </div>
 
         {/* Tab Switcher */}
         {step === 'phone' && (
-          <div className="auth-tabs">
+          <div className="auth-tabs-xl">
             <button
-              className={`auth-tab ${authMode === 'signup' ? 'active' : ''}`}
+              className={`auth-tab-xl ${authMode === 'signup' ? 'active' : ''}`}
               onClick={() => {
                 setAuthMode('signup');
                 setErrorMsg('');
@@ -112,7 +121,7 @@ export const AuthPage = ({ onAuthenticate }) => {
               Sign Up
             </button>
             <button
-              className={`auth-tab ${authMode === 'login' ? 'active' : ''}`}
+              className={`auth-tab-xl ${authMode === 'login' ? 'active' : ''}`}
               onClick={() => {
                 setAuthMode('login');
                 setErrorMsg('');
@@ -124,31 +133,31 @@ export const AuthPage = ({ onAuthenticate }) => {
         )}
 
         {/* Error Alert */}
-        {errorMsg && <div className="auth-error-banner">⚠️ {errorMsg}</div>}
+        {errorMsg && <div className="auth-error-banner-xl">⚠️ {errorMsg}</div>}
 
         {/* STEP 1: Phone Details Input Form */}
         {step === 'phone' && (
-          <form className="auth-form" onSubmit={handlePhoneSubmit}>
+          <form className="auth-form-xl" onSubmit={handlePhoneSubmit}>
             {authMode === 'signup' && (
               <>
-                <div className="form-group">
+                <div className="form-group-xl">
                   <label htmlFor="fullName">Full Name</label>
                   <input
                     id="fullName"
                     type="text"
-                    placeholder="e.g. Alex Morgan"
+                    placeholder="Enter your full name"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     required
                   />
                 </div>
 
-                <div className="form-group">
+                <div className="form-group-xl">
                   <label htmlFor="email">Work Email (Optional)</label>
                   <input
                     id="email"
                     type="email"
-                    placeholder="alex@company.com"
+                    placeholder="e.g. alex@company.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                   />
@@ -156,13 +165,19 @@ export const AuthPage = ({ onAuthenticate }) => {
               </>
             )}
 
-            <div className="form-group">
-              <label htmlFor="phone">Phone Number for Verification</label>
-              <div className="phone-input-group">
+            <div className="form-group-xl">
+              <div className="label-with-counter">
+                <label htmlFor="phone">10-Digit Mobile Phone Number</label>
+                <span className={`digit-counter ${phoneNumber.length === 10 ? 'complete' : ''}`}>
+                  {phoneNumber.length} / 10 Digits
+                </span>
+              </div>
+
+              <div className="phone-input-group-xl">
                 <select
                   value={countryCode}
                   onChange={(e) => setCountryCode(e.target.value)}
-                  className="country-select"
+                  className="country-select-xl"
                 >
                   {COUNTRY_CODES.map((item, idx) => (
                     <option key={idx} value={item.code}>
@@ -173,35 +188,39 @@ export const AuthPage = ({ onAuthenticate }) => {
                 <input
                   id="phone"
                   type="tel"
-                  placeholder="98765 43210"
+                  placeholder="9876543210"
+                  maxLength={10}
                   value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ''))}
+                  onChange={handlePhoneInputChange}
                   required
                 />
               </div>
+              <p className="field-hint-xl">
+                Strict 10-digit mobile number requirement (e.g. 9876543210)
+              </p>
             </div>
 
-            <button type="submit" className="auth-submit-btn">
+            <button type="submit" className="auth-submit-btn-xl">
               Send SMS Verification Code 📱
             </button>
           </form>
         )}
 
-        {/* STEP 2: Snooker OTP Verification */}
+        {/* STEP 2: Bubble Pop Arcade OTP Verification */}
         {step === 'otp' && (
           <div className="otp-step-container">
             {/* Simulated SMS Toast */}
-            <div className="sms-simulated-notification">
-              <div className="sms-icon">💬</div>
-              <div className="sms-body">
+            <div className="sms-simulated-notification-xl">
+              <div className="sms-icon-xl">💬</div>
+              <div className="sms-body-xl">
                 <strong>Simulated SMS Received:</strong>
                 <p>
-                  Your NegoForge verification OTP code is <strong>{generatedOtp}</strong>. Pot these numbers on the snooker table below!
+                  Your verification code is <strong>{generatedOtp}</strong>. Pop the balloon digits below!
                 </p>
               </div>
             </div>
 
-            <SnookerOtpGame
+            <OtpBubblePopGame
               targetOtp={generatedOtp}
               currentOtp={enteredOtp}
               onOtpChange={setEnteredOtp}
@@ -209,13 +228,13 @@ export const AuthPage = ({ onAuthenticate }) => {
               onCancel={() => setStep('phone')}
             />
 
-            <div className="resend-row">
+            <div className="resend-row-xl">
               {resendTimer > 0 ? (
-                <span className="timer-text">Resend code available in {resendTimer}s</span>
+                <span className="timer-text-xl">Resend code available in {resendTimer}s</span>
               ) : (
                 <button
                   type="button"
-                  className="btn-resend-link"
+                  className="btn-resend-link-xl"
                   onClick={triggerOtpGeneration}
                 >
                   🔄 Resend Verification Code
@@ -227,10 +246,10 @@ export const AuthPage = ({ onAuthenticate }) => {
 
         {/* STEP 3: Verification Success */}
         {step === 'success' && (
-          <div className="auth-success-state">
-            <div className="success-pulse-ring">✓</div>
-            <h3>Authentication Successful!</h3>
-            <p>Welcome to NegoForge Platform, {fullName || 'User'}. Redirecting to arena...</p>
+          <div className="auth-success-state-xl">
+            <div className="success-pulse-ring-xl">✓</div>
+            <h2>Authentication Successful!</h2>
+            <p>Welcome to NegoForge Platform, {fullName || 'User'}. Launching arena...</p>
           </div>
         )}
       </div>
