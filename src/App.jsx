@@ -1,11 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import './App.css';
 import { scenarios, personalityOptions } from './constants/scenarios';
 import { NEGOTIATION_MODE } from './constants/negotiationConstants';
 import { NegotiationApi } from './services/NegotiationApi';
 import { NegotiationArenaPanel } from './components/NegotiationArenaPanel';
+import { AuthPage } from './components/AuthPage';
 
 function App() {
+  const [authUser, setAuthUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('negoforge_auth_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
+  });
+
   const [selectedMode, setSelectedMode] = useState(NEGOTIATION_MODE.SIMULATION);
   const [selectedScenario, setSelectedScenario] = useState(null);
   const [agentPersonalities, setAgentPersonalities] = useState({});
@@ -14,6 +24,24 @@ function App() {
   const [negotiationState, setNegotiationState] = useState(null);
 
   const scenario = selectedScenario ? scenarios[selectedScenario] : null;
+
+  const handleAuthenticate = (user) => {
+    setAuthUser(user);
+    try {
+      localStorage.setItem('negoforge_auth_user', JSON.stringify(user));
+    } catch (e) {
+      console.error('Failed to save session:', e);
+    }
+  };
+
+  const handleLogout = () => {
+    setAuthUser(null);
+    try {
+      localStorage.removeItem('negoforge_auth_user');
+    } catch (e) {
+      console.error('Failed to clear session:', e);
+    }
+  };
 
   const handleScenarioSelect = (scenarioId) => {
     setSelectedScenario(scenarioId);
@@ -71,11 +99,29 @@ function App() {
     setNegotiationState(null);
   };
 
+  // If user is not authenticated, render AuthPage
+  if (!authUser) {
+    return <AuthPage onAuthenticate={handleAuthenticate} />;
+  }
+
   return (
     <div className="app">
       {/* Header */}
       <header className="header">
         <div className="header-content">
+          <div className="user-profile-bar">
+            <div className="user-info-pill">
+              <span className="user-avatar">👤</span>
+              <div className="user-details">
+                <span className="user-name">{authUser.name}</span>
+                <span className="user-phone">{authUser.phone} • Verified ✓</span>
+              </div>
+            </div>
+            <button type="button" className="btn-logout" onClick={handleLogout}>
+              Log Out 🚪
+            </button>
+          </div>
+
           <p className="eyebrow">AI DRIVEN MULTI-AGENT SIMULATOR</p>
           <h1>NegoForge Platform</h1>
           <p className="subtitle">
